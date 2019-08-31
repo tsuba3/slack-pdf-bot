@@ -24,9 +24,10 @@ const documentExts = [
 ];
 
 app.event('app_mention', async({event, context}) => {
-    console.log(event);
-    console.log(context);
-    processMessage(event, event.channel, event.ts, event.user);
+    console.log("Event app_mention");
+    // console.log(event);
+    // console.log(context);
+    processMessage(event.files, event.channel, event.ts, event.user);
     if (!event.files && event.thread_ts) {
         console.log("Retriving a message");
         const res = await clientRead.channels.history({
@@ -35,8 +36,8 @@ app.event('app_mention', async({event, context}) => {
             latest: event.thread_ts,
             inclusive: true
         });
-        console.log(res);
-        processMessage(res.messages[0], event.channel, event.thread_ts, event.user);
+        // console.log(res);
+        processMessage(res.messages[0].files, event.channel, event.thread_ts, event.user);
     };
 });
 
@@ -44,14 +45,14 @@ app.event('app_mention', async({event, context}) => {
   await app.start(process.env.PORT || 3000);
 })();
 
-const processMessage = async (event, channel, ts, user) => {
-    if (event.files) client.chat.postEphemeral({
+const processMessage = async (files, channel, ts, user) => {
+    if (files) client.chat.postEphemeral({
         user,
         channel,
         text: "PDF化・圧縮中",
     });
-    for (var i = 0; event.files && i < event.files.length; ++i) {
-        const url = event.files[i].url_private_download;
+    for (var i = 0; files && i <files.length; ++i) {
+        const url = files[i].url_private_download;
         const ext = url.split('.').pop();
         if (ext == "pdf") {
             recievePDF(url, channel, ts);
@@ -71,12 +72,14 @@ const recievePDF = async (url, channel, ts) => {
 };
 
 const recieveDocument = async (url, channel, ts) => {
+    const ext = url.split(".").pop();
+    console.log("Convert " + ext + " to pdf");
     converted = request.get({
         url,
         headers: {Authorization: "Bearer " + process.env.SLACK_BOT_TOKEN}
     }).pipe(new stream.PassThrough)
     .pipe(cloudconvert.convert({
-        inputformat: url.split(".").pop(),
+        inputformat: ext,
         outputformat: "pdf"
     })).pipe(new stream.PassThrough());
 
